@@ -1,0 +1,40 @@
+name:                memory-manager-experiments
+version:             0.1.0.0
+github:              "mwu-tow/memory-manager-experiments"
+license:             Apache
+author:              "Michał Wawrzyniec Urbańczyk"
+maintainer:          "michal.w.urbanczyk@gmail.com"
+copyright:           "2018 Michał Wawrzyniec Urbańczyk"
+
+# extra-source-files:
+# - README.md
+# - ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description: Please see the README on Github at <https://github.com/mwu-tow/memory-manager-experiments#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- criterion
+- deepseq
+- ghc-prim
+
+ghc-options:
+- -threaded
+- -rtsopts
+- -with-rtsopts=-N
+- -O2
+
+executables:
+  memt:
+    main:                Main.hs
+    source-dirs:         src
+    c-sources:           memory.cpp
+    cc-options:          -std=c++17 -O3
+    extra-libraries:     stdc++
