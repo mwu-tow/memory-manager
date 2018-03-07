@@ -17,7 +17,7 @@ import Control.DeepSeq (NFData)
 newtype MemoryManager = MemoryManager (Ptr ()) deriving (Eq, Ord, Show, Generic, NFData)
 type Item = Ptr ()
 
-foreign import ccall unsafe "newManager"    newManager    :: CSize -> IO MemoryManager
+foreign import ccall unsafe "newManager"    newManager    :: CSize -> CSize -> IO MemoryManager
 foreign import ccall unsafe "deleteManager" deleteManager :: MemoryManager -> IO ()
 foreign import ccall unsafe "newItem"       newItem       :: MemoryManager -> IO Item
 foreign import ccall unsafe "deleteItem"    deleteItem    :: MemoryManager -> Item -> IO ()
@@ -28,14 +28,14 @@ foreign import ccall unsafe "justReturn"          justReturn          :: CSize -
 
 -- Benchmarks IO action that uses MemoryManager
 benchmarkWithManager :: NFData a
-                     => String -> (MemoryManager -> IO a) -> CSize 
+                     => String -> (MemoryManager -> IO a) -> CSize -> CSize
                      -> Benchmark
-benchmarkWithManager name action itemSize = envWithCleanup
-    (newManager itemSize)
+benchmarkWithManager name action itemSize blockSize = envWithCleanup
+    (newManager itemSize blockSize)
     deleteManager
     (\mgr -> bench name $ nfIO (action mgr))
 
-testAllocFreePairsCpp :: CSize -> Benchmark
+testAllocFreePairsCpp :: CSize -> CSize -> Benchmark
 testAllocFreePairsCpp = benchmarkWithManager
     "FFI: C++ manager (new >>= delete)"
     (\mgr -> newItem mgr >>= deleteItem mgr)
@@ -43,8 +43,8 @@ testAllocFreePairsCpp = benchmarkWithManager
 main :: IO ()
 main = do 
     defaultMain 
-        [ testAllocFreePairsCpp 64
-        , benchmarkWithManager "FFI: C++ manager (new)" newItem 64
+        [ testAllocFreePairsCpp 64 1024
+        , benchmarkWithManager "FFI: C++ manager (new)" newItem 64 1024
         , bench "FFI: trivial call" $ nfIO $ justReturn 5 -- TODO allocates much memory, so for higher iteration count there will be slow downs
         , bench "Foreign.Marshal.Alloc" $ nfIO $ (mallocBytes 64 >>= free)
         , bench "C++: randomized pattern" $ nfIO $ randomizedBenchmark 10000000 64 0.7
