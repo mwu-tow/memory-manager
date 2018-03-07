@@ -377,8 +377,24 @@ public:
 	}
 };
 
-// using MemoryManager = MemoryManagerC;
-using MemoryManagerToUse = MemoryManager<locking_policy::Spinlock>;
+// Note: rough performance results (for alloc N elements, then free N elements benchmark)
+//       of different locking policies across platforms:
+//
+//               | std::mutex | spinlock
+//---------------+------------+-----------
+// Windows VS    | 443 ms     | 107 ms
+// Windows MinGW | 248 ms     | 144 ms
+// Linux GCC     | 12 ms      | 220 ms
+//---------------+------------+-----------
+// Therefore, Windows uses spinlock, non-Windows uses std::mutex
+#ifdef _WIN32
+using LockingPolicyToUse = locking_policy::Spinlock;
+#else
+using LockingPolicyToUse = locking_policy::StdMutex;
+#endif
+
+using MemoryManagerToUse = MemoryManager<LockingPolicyToUse>;
+
 
 extern "C"
 {
