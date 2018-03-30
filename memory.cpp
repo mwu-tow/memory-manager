@@ -1,5 +1,7 @@
 #define _SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING
 
+#include "memory.h"
+
 #include <atomic>
 #include <chrono>
 #include <cstdlib>
@@ -15,6 +17,7 @@
 //#include <string_view>
 #include <utility>
 #include <vector>
+#include <unordered_set>
 
 #ifdef _MSC_VER
 #include <wrl/wrappers/corewrappers.h>
@@ -125,6 +128,11 @@ class MemoryManager
 
 		Block& operator=(const Block &) = delete;
 
+		void *itemAtIndex(size_t itemSize, size_t index) const
+		{
+			return static_cast<char*>(memory) + index * itemSize;
+		}
+
 		~Block()
 		{
 			std::free(memory);
@@ -150,7 +158,7 @@ class MemoryManager
 		return blocks.back();
 	}
 
-	void *&storedPtr(void *item)
+	void *&storedPtr(void *item) const
 	{
 		return *static_cast<void**>(item);
 	}
@@ -171,7 +179,7 @@ class MemoryManager
 	
 	void *obtainUnitializedItem(Block &block)
 	{
-		const auto ret = static_cast<char*>(block.memory) + (itemsPerBlock - block.unitializedItems) * itemSize;
+		const auto ret = block.itemAtIndex(itemSize, itemsPerBlock - block.unitializedItems);
 		--block.unitializedItems;
 		return ret;
 	}
@@ -211,6 +219,33 @@ public:
 		const auto lockGuard = mx.lock();
  		storedPtr(item) = head;
  		head = item;
+	}
+
+	auto allocatedItems() const
+	{
+		const auto addItemsFromBlock = [this] (auto &out, const Block &block) -> void
+		{
+			const auto perhapsUsedInBlock = itemsPerBlock - block.unitializedItems;
+			for(auto i = 0u; i < perhapsUsedInBlock; ++i)
+				out.insert(out.end(), block.itemAtIndex(itemSize, i));
+		};
+
+		std::unordered_set<void*> ret;
+		
+		// add all allocated
+		for(const Block &block : blocks)
+			addItemsFromBlock(ret, block);
+
+		// remove allocated and then freed: 
+		// iterate over the free pointers list
+		auto itr = this->head;
+		while(itr != nullptr)
+		{
+			ret.erase(itr);
+			itr = storedPtr(itr);
+		}
+
+		return ret;
 	}
 };
 
@@ -414,6 +449,28 @@ extern "C"
 	void deleteItem(void *manager, void *item)
 	{
 		static_cast<MemoryManagerToUse*>(manager)->deleteItem(item);
+	}
+
+	void** acquireItemList(void *manager, size_t *outCount)
+	{
+		const auto items = static_cast<MemoryManagerToUse*>(manager)->allocatedItems();
+		const auto count = items.size();
+
+		void** ret = static_cast<void**>(std::malloc(sizeof(void*) * count));
+		if(!ret)
+			return nullptr;
+		
+		*outCount = count;
+		void **itr = ret;
+		for(auto item : items)
+			*itr++ = item;
+
+		return ret;
+	}
+
+	void releaseItemList(void **items)
+	{
+		std::free(items);
 	}
 
 	// BELOW APIs are for tests / benchmarks only //////////////////

@@ -7,10 +7,13 @@
 
 module Main where
 
+import Control.Exception (bracket)
 import Criterion.Main
-import Foreign (Ptr)
+import Foreign (Ptr, nullPtr)
 import Foreign.C (CDouble(..), CSize(..))
-import Foreign.Marshal.Alloc (mallocBytes, free)
+import Foreign.Marshal.Alloc (alloca, malloc, mallocBytes, free)
+import Foreign.Marshal.Array (peekArray)
+import Foreign.Storable (peek)
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 
@@ -22,9 +25,21 @@ foreign import ccall unsafe "deleteManager" deleteManager :: MemoryManager -> IO
 foreign import ccall unsafe "newItem"       newItem       :: MemoryManager -> IO Item
 foreign import ccall unsafe "deleteItem"    deleteItem    :: MemoryManager -> Item -> IO ()
 -------------------------------------------------------------------------------------------
-foreign import ccall unsafe "benchmark"           benchmark           :: CSize -> CSize -> IO()
-foreign import ccall unsafe "randomizedBenchmark" randomizedBenchmark :: CSize -> CSize -> CDouble -> IO()
+foreign import ccall unsafe "acquireItemList"     acquireItemList     :: MemoryManager -> Ptr CSize -> IO (Ptr Item)
+foreign import ccall unsafe "releaseItemList"     releaseItemList     :: Ptr Item -> IO ()
+
+foreign import ccall unsafe "benchmark"           benchmark           :: CSize -> CSize -> IO ()
+foreign import ccall unsafe "randomizedBenchmark" randomizedBenchmark :: CSize -> CSize -> CDouble -> IO ()
 foreign import ccall unsafe "justReturn"          justReturn          :: CSize -> IO (Ptr ())
+
+allocatedItems :: MemoryManager -> IO [Item]
+allocatedItems mgr = alloca $ \outListSize -> 
+    bracket (acquireItemList mgr outListSize) releaseItemList $ 
+        \listPtr -> 
+            if listPtr /= nullPtr then do
+                obtainedSize <- peek outListSize
+                peekArray (fromInteger $ toInteger obtainedSize) listPtr 
+            else return []
 
 -- Benchmarks IO action that uses MemoryManager
 benchmarkWithManager :: NFData a
