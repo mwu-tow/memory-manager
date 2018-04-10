@@ -241,6 +241,7 @@ public:
 
 	auto allocatedItems() const
 	{
+		const auto lockGuard = mx.lock();
 		const auto addItemsFromBlock = [this] (auto &out, const Block &block) -> void
 		{
 			const auto perhapsUsedInBlock = itemsPerBlock - block.unitializedItems;
