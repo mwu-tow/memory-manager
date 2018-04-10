@@ -19,9 +19,10 @@ C++ code is written in C++17 subset that is supported both by VS 2017.5 and GCC 
 
 # Memory Manager API
 Currently supported Memory Manager Core API:
-* `void *newManager(size_t itemSize)` — creates a new Manager that will provide items of given size in bytes
+* `void *newManager(size_t itemSize, size_t itemsPerBlock)` — creates a new Manager that will provide items of given size in bytes
 * `void deleteManager(void *manager)` — deletes a Manager, freeing all all items that were allocated
 * `void *newItem(void *manager)` — returns a pointer uniquely owning a memory of item's size
+* `void *newItems(void *manager, size_t count)` — allocates a contiguous sequence of N items, returns a pointer to the first item. Further items can by accessed by incrementing pointer with an `itemSize` (memory manager does not add any alignment). Note: `count` value must be not greater than `itemsPerBlock` value used when `manager` was created! 
 * `void deleteItem(void *manager, void *item)` — relinquishes ownership of memory for given item
 
 Currently supported Memory Manager Debug API:
