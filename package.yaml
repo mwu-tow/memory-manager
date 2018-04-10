@@ -36,5 +36,5 @@ executables:
     main:                Main.hs
     source-dirs:         src
     c-sources:           memory.cpp
-    cc-options:          -std=c++17 -O3
+    cc-options:          -std=c++17 -O3 -DNDEBUG  # Note: NDEBUG is to prevent assert() macros from slowing down the program, can be disabled for the debug purposes
     extra-libraries:     stdc++

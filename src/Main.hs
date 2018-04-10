@@ -23,6 +23,7 @@ type Item = Ptr ()
 foreign import ccall unsafe "newManager"    newManager    :: CSize -> CSize -> IO MemoryManager
 foreign import ccall unsafe "deleteManager" deleteManager :: MemoryManager -> IO ()
 foreign import ccall unsafe "newItem"       newItem       :: MemoryManager -> IO Item
+foreign import ccall unsafe "newItems"      newItems      :: MemoryManager -> CSize -> IO Item
 foreign import ccall unsafe "deleteItem"    deleteItem    :: MemoryManager -> Item -> IO ()
 -------------------------------------------------------------------------------------------
 foreign import ccall unsafe "acquireItemList"     acquireItemList     :: MemoryManager -> Ptr CSize -> IO (Ptr Item)

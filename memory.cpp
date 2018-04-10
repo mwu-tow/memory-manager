@@ -3,6 +3,7 @@
 #include "memory.h"
 
 #include <atomic>
+#include <cassert>
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
@@ -179,8 +180,14 @@ class MemoryManager
 	
 	void *obtainUnitializedItem(Block &block)
 	{
+		return obtainUnitializedItems(block, 1);
+	}
+
+	void *obtainUnitializedItems(Block &block, size_t count)
+	{
+		assert(block.unitializedItems >= count);
 		const auto ret = block.itemAtIndex(itemSize, itemsPerBlock - block.unitializedItems);
-		--block.unitializedItems;
+		block.unitializedItems -= count;
 		return ret;
 	}
 
@@ -212,6 +219,17 @@ public:
 			else
 				return obtainUnitializedItem(addBlock());
 		}
+	}
+
+	void *newItems(size_t count)
+	{
+		const auto lockGuard = mx.lock();
+		assert(count <= itemsPerBlock);
+		for(auto &block : blocks)
+			if(block.unitializedItems >= count)
+				return obtainUnitializedItems(block, count);
+
+		return obtainUnitializedItems(addBlock(), count);
 	}
 
 	void deleteItem(void *item)
@@ -445,6 +463,10 @@ extern "C"
 	void *newItem(void *manager)
 	{
 		return static_cast<MemoryManagerToUse*>(manager)->newItem();
+	}
+	void *newItems(void *manager, size_t count)
+	{
+		return static_cast<MemoryManagerToUse*>(manager)->newItems(count);
 	}
 	void deleteItem(void *manager, void *item)
 	{

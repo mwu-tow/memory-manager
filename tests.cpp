@@ -37,6 +37,26 @@ namespace
 	}
 }
 
+BOOST_AUTO_TEST_CASE(ObtainNItems)
+{
+	const auto itemSize = 50;
+	const auto blockSize = 250;
+	auto manager = newManager(itemSize, blockSize);
+
+	auto item0 = newItems(manager, blockSize);
+	for(auto i = 0u; i < blockSize; i++)
+	{
+		auto itemN = static_cast<char*>(item0) + itemSize * i;
+		std::memset(itemN, 0x12, itemSize);
+	}
+	for(auto i = 0u; i < blockSize; i++)
+	{
+		auto itemN = static_cast<char*>(item0) + itemSize * i;
+		deleteItem(manager, itemN);
+	}
+	deleteManager(manager);
+}
+
 BOOST_AUTO_TEST_CASE(ObtainingActiveItemsList)
 {
 	const auto blockSize = 250;
